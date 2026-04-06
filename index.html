@@ -19,23 +19,10 @@
     </style>
 
     <!--
-      IWSDK Import Map
-      These CDN URLs are placeholders. Replace with official IWSDK CDN URLs
-      provided by the IWSDK team for production use.
+      @iwsdk/core is resolved by Vite via alias to src/lib/iwsdk-core.ts (a Three.js shim).
+      When the real IWSDK packages ship, replace the Vite alias with an import map
+      or install the packages via npm — no application code changes needed.
     -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@iwsdk/core": "https://esm.sh/@anthropic-ai/iwsdk-core@latest",
-          "@iwsdk/core/": "https://esm.sh/@anthropic-ai/iwsdk-core@latest/",
-          "super-three": "https://esm.sh/super-three@latest",
-          "super-three/": "https://esm.sh/super-three@latest/",
-          "elics": "https://esm.sh/elics@latest",
-          "@preact/signals-core": "https://esm.sh/@preact/signals-core@latest",
-          "iwer": "https://esm.sh/@anthropic-ai/iwer@latest"
-        }
-      }
-    </script>
   </head>
   <body>
     <div id="loading"><span>Loading IWSDK Scene…</span></div>

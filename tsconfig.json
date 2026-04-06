@@ -12,10 +12,7 @@
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
-      "@iwsdk/core": ["./src/types/iwsdk-core.d.ts"],
-      "super-three": ["./src/types/super-three.d.ts"],
-      "elics": ["./src/types/elics.d.ts"],
-      "@preact/signals-core": ["./src/types/signals-core.d.ts"]
+      "@iwsdk/core": ["./src/lib/iwsdk-core.ts"]
     }
   },
   "include": ["src"]
