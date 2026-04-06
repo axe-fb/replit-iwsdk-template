@@ -1,0 +1,321 @@
+run = "npm install --silent && npm run dev"
+onBoot = "npm install --silent"
+entrypoint = "src/main.ts"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "npm run build && npm run preview"]
+
+[[ports]]
+localPort = 5173
+externalPort = 80
+
+[languages]
+
+[languages.typescript]
+pattern = "**/{*.ts,*.tsx}"
+
+[languages.typescript.languageServer]
+start = "typescript-language-server --stdio"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# REPLIT AGENT INSTRUCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+# The [agent] section teaches Replit Agent how to write correct IWSDK code.
+# When a user asks Agent to build a scene, Agent reads these instructions
+# and generates proper ECS-based IWSDK code instead of raw Three.js.
+# ═══════════════════════════════════════════════════════════════════════════
+
+[agent]
+instructions = """
+# IWSDK (Immersive Web SDK) — Agent Instructions
+
+You are building an immersive 3D/XR experience using IWSDK. This is NOT a
+regular Three.js or WebGL project. IWSDK uses an Entity Component System (ECS)
+architecture. Follow these instructions exactly.
+
+## Architecture: Entity Component System (ECS)
+
+IWSDK uses ECS, not object-oriented programming. The core concepts are:
+
+- **World**: The root container. Created via `World.create()`. Manages all
+  entities, components, and systems. You must pass a `features` array to opt-in
+  to the systems you need.
+- **Entity**: A lightweight container with a unique ID. Has no behavior on its
+  own. Created via `world.createEntity()`.
+- **Component**: Data attached to an entity. Defines what the entity IS.
+  Examples: MeshComponent (shape), MaterialComponent (appearance),
+  TransformComponent (position/rotation/scale).
+- **System**: Logic that runs each frame on entities that have specific
+  components. Systems are opted-in via the `features` array in World.create().
+
+## Quick Start Pattern
+
+```typescript
+import {
+  World,
+  MeshComponent,
+  MaterialComponent,
+  TransformComponent,
+  LightComponent,
+} from '@iwsdk/core';
+
+// 1. Create the world with required features
+const world = await World.create({
+  features: [
+    'renderer',
+    'mesh',
+    'material',
+    'light',
+    'transform',
+    'environment',
+    'interaction',
+    'physics',
+    'emulator',
+  ],
+});
+
+// 2. Create entities and attach components
+const box = world.createEntity();
+box.addComponent(MeshComponent, { type: 'box', width: 1, height: 1, depth: 1 });
+box.addComponent(MaterialComponent, { color: '#ff0000', metalness: 0.3, roughness: 0.5 });
+box.addComponent(TransformComponent, {
+  position: { x: 0, y: 0.5, z: -2 },
+  rotation: { x: 0, y: 0, z: 0 },
+  scale: { x: 1, y: 1, z: 1 },
+});
+
+// 3. Start the world
+world.start();
+```
+
+## FORBIDDEN APIs — NEVER USE THESE
+
+These APIs are incompatible with IWSDK. Using them will break the experience:
+
+1. **Raw WebXR Device API**: Never use `navigator.xr`, `XRSession`,
+   `XRReferenceSpace`, `XRFrame`, `XRView`, etc. IWSDK manages XR sessions.
+2. **Direct Three.js scene graph**: Never use `scene.add()`, `new THREE.Mesh()`,
+   `new THREE.BoxGeometry()`, `new THREE.MeshStandardMaterial()`, etc.
+   Use IWSDK components instead.
+3. **Direct DOM manipulation for 3D**: Never create `<canvas>` elements manually.
+   IWSDK manages the canvas.
+4. **Raw WebGL**: Never use `getContext('webgl')`, `gl.bindBuffer()`, etc.
+5. **requestAnimationFrame for rendering**: IWSDK manages the render loop. Use
+   Systems for per-frame logic.
+
+## Available Components (import from '@iwsdk/core')
+
+### Geometry / Mesh
+- `MeshComponent` — 3D shape
+  - `type`: 'box' | 'sphere' | 'cylinder' | 'plane' | 'torus' | 'cone' | 'ring'
+  - Box: `width`, `height`, `depth`
+  - Sphere: `radius`, `widthSegments`, `heightSegments`
+  - Cylinder: `radiusTop`, `radiusBottom`, `height`, `radialSegments`
+  - Plane: `width`, `height`
+  - Torus: `radius`, `tube`, `radialSegments`, `tubularSegments`
+  - Cone: `radius`, `height`, `radialSegments`
+
+### Material / Appearance
+- `MaterialComponent` — PBR material
+  - `color`: hex string (e.g., '#ff0000')
+  - `metalness`: 0–1
+  - `roughness`: 0–1
+  - `emissive`: hex string for glow color
+  - `emissiveIntensity`: glow strength
+  - `opacity`: 0–1 (set `transparent: true` if < 1)
+  - `transparent`: boolean
+  - `side`: 'front' | 'back' | 'double'
+  - `map`: texture URL string
+
+### Transform / Position
+- `TransformComponent` — position, rotation, scale
+  - `position`: { x, y, z } — world-space position
+  - `rotation`: { x, y, z } — Euler rotation in radians
+  - `scale`: { x, y, z } — scale factor
+
+### Lighting
+- `LightComponent` — light source
+  - `type`: 'ambient' | 'directional' | 'point' | 'spot'
+  - `color`: hex string
+  - `intensity`: number
+  - `castShadow`: boolean (directional and spot)
+  - `distance`: number (point and spot)
+  - `angle`: number (spot only, in radians)
+  - `penumbra`: 0–1 (spot only)
+
+### Physics
+- `RigidBodyComponent` — physics body
+  - `type`: 'static' | 'dynamic' | 'kinematic'
+  - `mass`: number (dynamic only)
+  - `linearDamping`: 0–1
+  - `angularDamping`: 0–1
+- `ColliderComponent` — collision shape
+  - `type`: 'box' | 'sphere' | 'cylinder' | 'plane' | 'capsule'
+  - Box: `halfExtents`: { x, y, z }
+  - Sphere: `radius`
+  - Cylinder: `radius`, `height`
+  - Capsule: `radius`, `height`
+  - `restitution`: bounciness (0–1)
+  - `friction`: friction coefficient
+
+### Interaction
+- `GrabInteraction` — makes entity grabbable by hands/controllers
+- `PokeInteraction` — makes entity respond to poke/touch
+- `RayInteraction` — makes entity respond to ray/pointer
+
+### Audio
+- `AudioComponent` — spatial or non-spatial audio
+  - `src`: audio file URL
+  - `loop`: boolean
+  - `autoplay`: boolean
+  - `spatial`: boolean (true = 3D positional audio)
+  - `volume`: 0–1
+  - `refDistance`, `maxDistance`, `rolloffFactor`: spatial attenuation
+
+### Text
+- `TextComponent` — 3D text
+  - `text`: string
+  - `fontSize`: number
+  - `color`: hex string
+  - `anchorX`: 'left' | 'center' | 'right'
+  - `anchorY`: 'top' | 'middle' | 'bottom'
+  - `maxWidth`: number (for wrapping)
+
+## Environment Setup
+
+```typescript
+world.setEnvironment({
+  skyType: 'gradient',        // 'gradient' | 'color' | 'equirectangular'
+  skyTopColor: '#1a1a2e',
+  skyBottomColor: '#16213e',
+  groundColor: '#2d2d2d',
+  // For equirectangular:
+  // skyType: 'equirectangular',
+  // skyImage: '/assets/sky.hdr',
+});
+```
+
+## Custom Systems (Per-Frame Logic)
+
+To run logic every frame, create a custom System:
+
+```typescript
+import { System, World, TransformComponent } from '@iwsdk/core';
+
+class RotateSystem extends System {
+  // Define which components entities must have to be processed
+  static queries = {
+    rotating: { components: [TransformComponent, RotateTag] },
+  };
+
+  execute(delta: number): void {
+    for (const entity of this.queries.rotating.results) {
+      const transform = entity.getComponent(TransformComponent);
+      transform.rotation.y += delta * 0.5;
+    }
+  }
+}
+
+// Register the system with the world
+world.registerSystem(RotateSystem);
+```
+
+## Common Patterns
+
+### Creating a Room / Enclosed Space
+```typescript
+function createRoom(world: World, width: number, height: number, depth: number) {
+  const wallColor = '#f5f5f5';
+  // Floor
+  const floor = world.createEntity();
+  floor.addComponent(MeshComponent, { type: 'plane', width, height: depth });
+  floor.addComponent(MaterialComponent, { color: '#8B7355', roughness: 0.9 });
+  floor.addComponent(TransformComponent, {
+    position: { x: 0, y: 0, z: 0 },
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 },
+  });
+
+  // Back wall
+  const backWall = world.createEntity();
+  backWall.addComponent(MeshComponent, { type: 'plane', width, height });
+  backWall.addComponent(MaterialComponent, { color: wallColor });
+  backWall.addComponent(TransformComponent, {
+    position: { x: 0, y: height / 2, z: -depth / 2 },
+  });
+
+  // Repeat for side walls, ceiling as needed...
+}
+```
+
+### Creating Interactive Buttons / Panels
+```typescript
+function createButton(world: World, position: Vec3, label: string, onClick: () => void) {
+  const button = world.createEntity();
+  button.addComponent(MeshComponent, { type: 'box', width: 0.3, height: 0.1, depth: 0.05 });
+  button.addComponent(MaterialComponent, { color: '#2196F3', roughness: 0.4 });
+  button.addComponent(TransformComponent, { position });
+  button.addComponent(PokeInteraction);
+
+  // Add text label
+  const label_entity = world.createEntity();
+  label_entity.addComponent(TextComponent, {
+    text: label, fontSize: 0.04, color: '#ffffff', anchorX: 'center', anchorY: 'middle',
+  });
+  label_entity.addComponent(TransformComponent, {
+    position: { x: position.x, y: position.y, z: position.z + 0.03 },
+  });
+
+  button.on('poke', onClick);
+}
+```
+
+### Loading 3D Models (GLTF)
+```typescript
+import { GLTFComponent } from '@iwsdk/core';
+
+const model = world.createEntity();
+model.addComponent(GLTFComponent, {
+  src: '/assets/my-model.glb',
+  scale: 1.0,
+});
+model.addComponent(TransformComponent, {
+  position: { x: 0, y: 0, z: -3 },
+});
+```
+
+### Parenting Entities
+```typescript
+const parent = world.createEntity();
+parent.addComponent(TransformComponent, { position: { x: 0, y: 1, z: -2 } });
+
+const child = world.createEntity();
+child.addComponent(TransformComponent, { position: { x: 0.5, y: 0, z: 0 } }); // Relative to parent
+child.setParent(parent);
+```
+
+## Project Structure
+
+- `src/main.ts` — Entry point. Creates World, loads features, starts scene.
+- `src/scene.ts` — Scene setup. Create entities and components here.
+- `index.html` — HTML entry with IWSDK import map (CDN packages).
+- `docs/IWSDK_GUIDE.md` — Detailed API reference and examples.
+- Add new scene files in `src/` and import them from `main.ts`.
+- Static assets (textures, models, audio) go in `public/`.
+
+## Important Rules
+
+1. ALWAYS use `World.create()` with a `features` array.
+2. ALWAYS import from `@iwsdk/core` — never from `three` directly.
+3. ALWAYS use TypeScript strict mode.
+4. NEVER manipulate the Three.js scene graph directly.
+5. NEVER use raw WebXR APIs.
+6. NEVER create canvas elements — IWSDK manages the canvas.
+7. Use ECS patterns: Entity + Components, not class hierarchies.
+8. For per-frame logic, create Systems — don't use requestAnimationFrame.
+9. Position units are in meters. y=0 is the floor. Eye level ≈ y=1.6.
+10. The user faces -Z by default (negative Z is "forward").
+11. Read `docs/IWSDK_GUIDE.md` for detailed API reference.
+"""
